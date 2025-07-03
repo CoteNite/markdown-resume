@@ -16,6 +16,7 @@ export const LEAVE_DELAY = 0;
 
 export const MARK = "_";
 
+
 export const ITEM_MAX_NUMS = 100;
 
 export const DATA_MARKDOWN = "data-markdown";

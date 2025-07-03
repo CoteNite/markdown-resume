@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { withStyles } from "@material-ui/core/styles";
 import Tooltip from "@material-ui/core/Tooltip";
 import Button from "@material-ui/core/Button";
-import axios from "axios";
 
 import picture from "../../icons/picture.svg";
 
@@ -12,8 +11,7 @@ import {
   ENTER_DELAY,
   LEAVE_DELAY,
   DATA_MARKDOWN,
-  DATA_ORIGIN,
-  SM_MS_PROXY
+  DATA_ORIGIN
 } from "../../utils/constant";
 
 import { observer, inject } from "mobx-react";
@@ -24,36 +22,51 @@ import { observer, inject } from "mobx-react";
 @observer
 class Picture extends Component {
   /**
-   * 上传图片
+   * 使用本地图片
+   */
+
+  /**
+   * 使用本地图片
+   */
+  useLocalImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader(); reader.onload = (e) => { resolve(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  /**
+   * 处理图片上传
    */
   uploadPicture = async ({ target }) => {
-    const file = document.getElementById("uploadImage");
-    const formData = new FormData();
-    formData.append("smfile", file.files[0]);
-
-    const result = await axios.post(SM_MS_PROXY, formData);
-    if (result.data.message === "Image upload repeated limit.") {
+    const file = document.getElementById("uploadImage").files[0];
+    if (!file) return;
+    
+    const id = this.props.resume.choosenKey;
+    if (!id) {
       this.props.hint.setError({
         isOpen: true,
-        message: "同一张图片无法上传多次"
+        message: "请先选择一个网格"
       });
+      return;
+    }
+    
+    const element = document.getElementById(id);
+    const { isMarkdownMode } = this.props.navbar;
+    const imageUrl = await this.useLocalImage(file);
+    
+    if (!imageUrl) return;
+    
+    let content;
+    if (isMarkdownMode) {
+      content = `![avatar](${imageUrl})`;
+      element.childNodes[0].innerText = content;
+      element.setAttribute(DATA_MARKDOWN, content);
     } else {
-      const id = this.props.resume.choosenKey;
-      console.log(id);
-      const element = document.getElementById(id);
-
-      const { isMarkdownMode } = this.props.navbar;
-      let content;
-      if (isMarkdownMode) {
-        content = `![avatar](${result.data.data.url})`;
-        element.childNodes[0].innerText = content;
-        element.setAttribute(DATA_MARKDOWN, content);
-      } else {
-        content = `<section><p><img src="${result.data.data.url}" alt="avatar"></p>\n</section>`
-        element.childNodes[0].innerHTML = content;
-        element.setAttribute(DATA_ORIGIN, content);
-      }
-     
+      content = `<section><p><img src="${imageUrl}" alt="avatar"></p>\n</section>`
+      element.childNodes[0].innerHTML = content;
+      element.setAttribute(DATA_ORIGIN, content);
     }
   };
 
@@ -65,39 +78,46 @@ class Picture extends Component {
     const { classes } = this.props;
 
     return (
-      <Tooltip
-        title="图片"
-        placement="bottom"
-        enterDelay={ENTER_DELAY}
-        leaveDelay={LEAVE_DELAY}
-        disableFocusListener
-      >
-        <Button
-          className={classes.btn}
-          disabled={this.props.navbar.isDisabled}
-          onClick={this.stopPropagation}
-          classes={{
-            root: classes.minWidth,
-            disabled: classes.opacity
-          }}
+      <div className={classes.container}>
+        <Tooltip
+          title="本地图片"
+          placement="bottom"
+          enterDelay={ENTER_DELAY}
+          leaveDelay={LEAVE_DELAY}
+          disableFocusListener
         >
-          <input
-            accept="image/*"
-            className={classes.input}
-            id="uploadImage"
-            onChange={this.uploadPicture}
-            type="file"
-          />
-          <label htmlFor="uploadImage" className={classes.label}>
-            <img src={picture} alt="logo" />
-          </label>
-        </Button>
-      </Tooltip>
+          <Button
+            className={classes.btn}
+            disabled={this.props.navbar.isDisabled}
+            onClick={this.stopPropagation}
+            classes={{
+              root: classes.minWidth,
+              disabled: classes.opacity
+            }}
+          >
+            <input
+              accept="image/*"
+              className={classes.input}
+              id="uploadImage"
+              onChange={this.uploadPicture}
+              type="file"
+            />
+            <label htmlFor="uploadImage" className={classes.label}>
+              <img src={picture} alt="logo" />
+            </label>
+          </Button>
+        </Tooltip>
+      </div>
     );
   }
 }
 
 const styles = theme => ({
+  container: {
+    display: "flex",
+    alignItems: "center",
+    height: "100%"
+  },
   input: {
     display: "none",
     width: "100%"
